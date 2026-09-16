@@ -136,9 +136,9 @@
           <label class="ctrl-label" for="n_fijos">Gastos fijos del negocio
             <span class="ctrl-hint">Por mes: software, contador, coworking.</span>
           </label>
-          <span class="field"><span class="pre">$</span><input type="number" id="n_fijos" min="0" max="2000000" step="1000"></span>
+          <span class="field"><span class="pre">$</span><input type="number" id="n_fijos" min="0" max="50000" step="250"></span>
         </div>
-        <input type="range" id="r_fijos" min="0" max="2000000" step="1000" aria-label="Gastos fijos del negocio por mes">
+        <input type="range" id="r_fijos" min="0" max="50000" step="250" aria-label="Gastos fijos del negocio por mes">
       </div>
 
       <div class="ctrl">
@@ -146,9 +146,9 @@
           <label class="ctrl-label" for="n_personales">Gastos personales
             <span class="ctrl-hint">Por mes: lo que necesito para vivir.</span>
           </label>
-          <span class="field"><span class="pre">$</span><input type="number" id="n_personales" min="0" max="5000000" step="1000"></span>
+          <span class="field"><span class="pre">$</span><input type="number" id="n_personales" min="0" max="150000" step="500"></span>
         </div>
-        <input type="range" id="r_personales" min="0" max="5000000" step="1000" aria-label="Gastos personales por mes">
+        <input type="range" id="r_personales" min="0" max="150000" step="500" aria-label="Gastos personales por mes">
       </div>
 
       <div class="ctrl">
@@ -156,9 +156,9 @@
           <label class="ctrl-label" for="n_ganancia">Ganancia que quiero
             <span class="ctrl-hint">Por mes, arriba de cubrir todos los gastos.</span>
           </label>
-          <span class="field"><span class="pre">$</span><input type="number" id="n_ganancia" min="0" max="5000000" step="1000"></span>
+          <span class="field"><span class="pre">$</span><input type="number" id="n_ganancia" min="0" max="150000" step="500"></span>
         </div>
-        <input type="range" id="r_ganancia" min="0" max="5000000" step="1000" aria-label="Ganancia mensual deseada">
+        <input type="range" id="r_ganancia" min="0" max="150000" step="500" aria-label="Ganancia mensual deseada">
       </div>
 
       <div class="ctrl">
@@ -212,7 +212,7 @@
 
     <!-- ================= RESULTADO ================= -->
     <section class="card result" aria-label="Mi tarifa por hora">
-      <div class="kicker">Mi tarifa por hora</div>
+      <div class="kicker">Mi tarifa por hora · MXN</div>
       <div class="rate" id="out-rate"><span class="cur">$</span>0</div>
       <div class="per" id="out-rate-exact">por hora facturable</div>
 
@@ -233,7 +233,7 @@
     <ol class="steps-list" id="steps"></ol>
   </section>
 
-  <footer>Redondeo de la tarifa mostrada: al múltiplo de 100 más cercano. Todo el cálculo posterior usa el valor exacto.</footer>
+  <footer>Montos en pesos mexicanos (MXN). Redondeo de la tarifa mostrada: al múltiplo de $10 más cercano. Todo el cálculo posterior usa el valor exacto.</footer>
 </div>
 
 <script>
@@ -245,13 +245,13 @@
   var HORAS_DIA = 8;
 
   var EJEMPLO = {
-    gastosFijosMes: 300000,
-    gastosPersonalesMes: 900000,
-    gananciaMes: 400000,
+    gastosFijosMes: 5000,
+    gastosPersonalesMes: 25000,
+    gananciaMes: 10000,
     horasPorSemana: 44,
     porcentajeFacturable: 60,
     semanasVacaciones: 4,
-    porcentajeImpuestos: 35
+    porcentajeImpuestos: 25
   };
 
   // id base -> clave del modelo
@@ -271,10 +271,10 @@
     el[c[0]] = { range: document.getElementById("r_" + c[0]), num: document.getElementById("n_" + c[0]), key: c[1] };
   });
 
-  var fmtMoneda = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
-  var fmtMoneda2 = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  var fmtNum1 = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
-  var fmtNum2 = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
+  var fmtMoneda = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 });
+  var fmtMoneda2 = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var fmtNum1 = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 1 });
+  var fmtNum2 = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 });
 
   function pesos(v){ return "$" + fmtMoneda.format(Math.round(v)); }
   function pesos2(v){ return "$" + fmtMoneda2.format(v); }
@@ -311,7 +311,7 @@
       factorImpuestos: factorImpuestos,
       brutoNecesario: brutoNecesario,
       tarifaExacta: tarifaExacta,
-      tarifaRedondeada: isFinite(tarifaExacta) ? Math.round(tarifaExacta / 100) * 100 : Infinity,
+      tarifaRedondeada: isFinite(tarifaExacta) ? Math.round(tarifaExacta / 10) * 10 : Infinity,
       // derivados: siempre con la tarifa EXACTA, para que los números cierren
       porDia: tarifaExacta * HORAS_DIA,
       porMes: tarifaExacta * horasFacturablesAnio / MESES_ANIO
@@ -432,7 +432,7 @@
       version: 1,
       tipo: "calculadora-tarifa-por-hora",
       generado: new Date().toISOString(),
-      moneda: "ARS",
+      moneda: "MXN",
       entradas: {
         gastosFijosMes: estado.gastosFijosMes,
         gastosPersonalesMes: estado.gastosPersonalesMes,
