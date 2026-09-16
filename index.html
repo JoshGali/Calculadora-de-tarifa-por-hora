@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarifa por Hora</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel-2:#1e222b;
+    --line:#2a2f3a;
+    --text:#e8eaed;
+    --muted:#9aa3b2;
+    --accent:#4ade80;
+    --accent-dim:#1f7a4d;
+    --warn:#fbbf24;
+    --radius:14px;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f6f7f9; --panel:#ffffff; --panel-2:#f1f3f6; --line:#dfe3ea;
+      --text:#12151a; --muted:#5d6675; --accent:#0f9d58; --accent-dim:#b7e4c7;
+      --warn:#a1610a;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans);
+    line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 16px 64px}
+  header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;margin-bottom:22px}
+  header.top h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em}
+  header.top p{margin:0;color:var(--muted);font-size:13px}
+
+  .grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:22px;align-items:start}
+  @media (max-width:880px){ .grid{grid-template-columns:1fr} }
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 16px;font-weight:600}
+
+  /* ---- controles ---- */
+  .ctrl{padding:12px 0;border-top:1px solid var(--line)}
+  .ctrl:first-of-type{border-top:0;padding-top:0}
+  .ctrl-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;margin-bottom:9px}
+  .ctrl-label{font-size:14px;font-weight:550}
+  .ctrl-hint{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+  .field{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .field .pre,.field .suf{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  input[type="number"]{
+    width:104px;padding:7px 8px;text-align:right;font-family:var(--mono);font-size:14px;
+    background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;
+    font-variant-numeric:tabular-nums;
+  }
+  input[type="number"]:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  input[type="range"]{
+    -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{height:5px;border-radius:99px;background:var(--line)}
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:17px;height:17px;margin-top:-6px;border-radius:50%;
+    background:var(--accent);border:2px solid var(--bg);
+  }
+  input[type="range"]::-moz-range-track{height:5px;border-radius:99px;background:var(--line)}
+  input[type="range"]::-moz-range-thumb{width:15px;height:15px;border:2px solid var(--bg);border-radius:50%;background:var(--accent)}
+  input[type="range"]:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:99px}
+
+  /* ---- resultado ---- */
+  .result{position:sticky;top:18px}
+  .result .kicker{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+  .rate{
+    font-family:var(--mono);font-weight:700;letter-spacing:-.03em;color:var(--accent);
+    font-size:clamp(3.6rem,11.5vw,7.4rem);line-height:.95;margin:6px 0 2px;
+    font-variant-numeric:tabular-nums;word-break:break-all;
+  }
+  .rate .cur{font-size:.42em;vertical-align:.5em;margin-right:.06em;color:var(--muted)}
+  .per{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .mini{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .mini div{display:flex;justify-content:space-between;gap:12px;background:var(--panel);padding:10px 12px;font-size:13px}
+  .mini dt{color:var(--muted);margin:0}
+  .mini dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600}
+  .note{margin-top:14px;font-size:12px;color:var(--muted)}
+  .alert{display:none;margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px;
+    background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn)}
+  .alert.on{display:block}
+
+  /* ---- pasos ---- */
+  .steps{margin-top:22px}
+  ol.steps-list{list-style:none;counter-reset:s;margin:0;padding:0}
+  ol.steps-list li{counter-increment:s;padding:14px 0 14px 42px;border-top:1px solid var(--line);position:relative}
+  ol.steps-list li:first-child{border-top:0}
+  ol.steps-list li::before{
+    content:counter(s);position:absolute;left:0;top:13px;width:26px;height:26px;border-radius:50%;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--muted);
+    font-family:var(--mono);font-size:12px;display:grid;place-items:center;
+  }
+  .step-t{font-size:14px;font-weight:600;margin-bottom:4px}
+  .step-f{font-family:var(--mono);font-size:13px;color:var(--muted);word-break:break-word}
+  .step-f b{color:var(--text);font-weight:600}
+  .step-r{font-family:var(--mono);font-size:14px;margin-top:5px;font-variant-numeric:tabular-nums}
+  .step-r span{color:var(--accent);font-weight:700}
+
+  /* ---- botones ---- */
+  .bar{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+  button,.btn{
+    font:inherit;font-size:13px;font-weight:550;padding:9px 14px;border-radius:9px;cursor:pointer;
+    background:var(--panel-2);color:var(--text);border:1px solid var(--line);
+  }
+  button:hover,.btn:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#06210f}
+  @media (prefers-color-scheme: light){ button.primary{color:#fff} }
+  .status{font-size:12px;color:var(--muted);margin-top:9px;min-height:1.2em}
+  footer{margin-top:28px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Calculadora de tarifa por hora</h1>
+      <p>Cargá tus gastos, tus horas reales y tus impuestos. La tarifa se recalcula sola.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- ================= CONTROLES ================= -->
+    <section class="card" aria-label="Mis datos">
+      <h2>Mis datos</h2>
+
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label class="ctrl-label" for="n_fijos">Gastos fijos del negocio
+            <span class="ctrl-hint">Por mes: software, contador, coworking.</span>
+          </label>
+          <span class="field"><span class="pre">$</span><input type="number" id="n_fijos" min="0" max="2000000" step="1000"></span>
+        </div>
+        <input type="range" id="r_fijos" min="0" max="2000000" step="1000" aria-label="Gastos fijos del negocio por mes">
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label class="ctrl-label" for="n_personales">Gastos personales
+            <span class="ctrl-hint">Por mes: lo que necesito para vivir.</span>
+          </label>
+          <span class="field"><span class="pre">$</span><input type="number" id="n_personales" min="0" max="5000000" step="1000"></span>
+        </div>
+        <input type="range" id="r_personales" min="0" max="5000000" step="1000" aria-label="Gastos personales por mes">
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label class="ctrl-label" for="n_ganancia">Ganancia que quiero
+            <span class="ctrl-hint">Por mes, arriba de cubrir todos los gastos.</span>
+          </label>
+          <span class="field"><span class="pre">$</span><input type="number" id="n_ganancia" min="0" max="5000000" step="1000"></span>
+        </div>
+        <input type="range" id="r_ganancia" min="0" max="5000000" step="1000" aria-label="Ganancia mensual deseada">
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label class="ctrl-label" for="n_horas">Horas que trabajo por semana
+            <span class="ctrl-hint">Todas las horas de trabajo, facturables o no.</span>
+          </label>
+          <span class="field"><input type="number" id="n_horas" min="1" max="80" step="1"><span class="suf">h</span></span>
+        </div>
+        <input type="range" id="r_horas" min="1" max="80" step="1" aria-label="Horas trabajadas por semana">
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label class="ctrl-label" for="n_facturable">Horas facturables de verdad
+            <span class="ctrl-hint">El resto se va en administración, ventas y propuestas.</span>
+          </label>
+          <span class="field"><input type="number" id="n_facturable" min="5" max="100" step="1"><span class="suf">%</span></span>
+        </div>
+        <input type="range" id="r_facturable" min="5" max="100" step="1" aria-label="Porcentaje de horas facturables">
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label class="ctrl-label" for="n_vacaciones">Vacaciones y feriados
+            <span class="ctrl-hint">Semanas por año que no trabajo.</span>
+          </label>
+          <span class="field"><input type="number" id="n_vacaciones" min="0" max="20" step="0.5"><span class="suf">sem</span></span>
+        </div>
+        <input type="range" id="r_vacaciones" min="0" max="20" step="0.5" aria-label="Semanas de vacaciones y feriados al año">
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-head">
+          <label class="ctrl-label" for="n_impuestos">Impuestos y retenciones
+            <span class="ctrl-hint">Porcentaje del bruto que no me queda.</span>
+          </label>
+          <span class="field"><input type="number" id="n_impuestos" min="0" max="80" step="0.5"><span class="suf">%</span></span>
+        </div>
+        <input type="range" id="r_impuestos" min="0" max="80" step="0.5" aria-label="Porcentaje de impuestos y retenciones">
+      </div>
+
+      <div class="bar">
+        <button type="button" id="btn-export" class="primary">Exportar JSON</button>
+        <button type="button" id="btn-import">Importar JSON</button>
+        <button type="button" id="btn-reset">Volver al ejemplo</button>
+        <input type="file" id="file-import" accept=".json,application/json" hidden>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- ================= RESULTADO ================= -->
+    <section class="card result" aria-label="Mi tarifa por hora">
+      <div class="kicker">Mi tarifa por hora</div>
+      <div class="rate" id="out-rate"><span class="cur">$</span>0</div>
+      <div class="per" id="out-rate-exact">por hora facturable</div>
+
+      <dl class="mini">
+        <div><dt>Por día de 8 horas</dt><dd id="out-day">—</dd></div>
+        <div><dt>Facturado por mes</dt><dd id="out-month">—</dd></div>
+        <div><dt>Horas facturables por semana</dt><dd id="out-week">—</dd></div>
+      </dl>
+
+      <p class="note">Los números de arriba se calculan con la tarifa sin redondear, así cierran entre sí.</p>
+      <div class="alert" id="alert"></div>
+    </section>
+  </div>
+
+  <!-- ================= PASO A PASO ================= -->
+  <section class="card steps" aria-label="Cómo se calculó">
+    <h2>Cómo se calculó</h2>
+    <ol class="steps-list" id="steps"></ol>
+  </section>
+
+  <footer>Redondeo de la tarifa mostrada: al múltiplo de 100 más cercano. Todo el cálculo posterior usa el valor exacto.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SEMANAS_ANIO = 52;
+  var MESES_ANIO = 12;
+  var HORAS_DIA = 8;
+
+  var EJEMPLO = {
+    gastosFijosMes: 300000,
+    gastosPersonalesMes: 900000,
+    gananciaMes: 400000,
+    horasPorSemana: 44,
+    porcentajeFacturable: 60,
+    semanasVacaciones: 4,
+    porcentajeImpuestos: 35
+  };
+
+  // id base -> clave del modelo
+  var CAMPOS = [
+    ["fijos",      "gastosFijosMes"],
+    ["personales", "gastosPersonalesMes"],
+    ["ganancia",   "gananciaMes"],
+    ["horas",      "horasPorSemana"],
+    ["facturable", "porcentajeFacturable"],
+    ["vacaciones", "semanasVacaciones"],
+    ["impuestos",  "porcentajeImpuestos"]
+  ];
+
+  var estado = Object.assign({}, EJEMPLO);
+  var el = {};
+  CAMPOS.forEach(function(c){
+    el[c[0]] = { range: document.getElementById("r_" + c[0]), num: document.getElementById("n_" + c[0]), key: c[1] };
+  });
+
+  var fmtMoneda = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+  var fmtMoneda2 = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var fmtNum1 = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
+  var fmtNum2 = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
+
+  function pesos(v){ return "$" + fmtMoneda.format(Math.round(v)); }
+  function pesos2(v){ return "$" + fmtMoneda2.format(v); }
+
+  function limitar(base, valor){
+    var input = el[base].num;
+    var min = parseFloat(input.min), max = parseFloat(input.max);
+    var v = parseFloat(valor);
+    if (!isFinite(v)) v = EJEMPLO[el[base].key];
+    if (isFinite(min) && v < min) v = min;
+    if (isFinite(max) && v > max) v = max;
+    return v;
+  }
+
+  // ---------- el cálculo ----------
+  function calcular(s){
+    var semanasTrabajadas = SEMANAS_ANIO - s.semanasVacaciones;
+    var horasFacturablesSemana = s.horasPorSemana * (s.porcentajeFacturable / 100);
+    var horasFacturablesAnio = horasFacturablesSemana * semanasTrabajadas;
+    var costoAnual = (s.gastosFijosMes + s.gastosPersonalesMes) * MESES_ANIO;
+    var ingresoObjetivo = s.gananciaMes * MESES_ANIO;
+    var netoNecesario = costoAnual + ingresoObjetivo;
+    var factorImpuestos = 1 - (s.porcentajeImpuestos / 100);
+    var brutoNecesario = factorImpuestos > 0 ? netoNecesario / factorImpuestos : Infinity;
+    var tarifaExacta = horasFacturablesAnio > 0 ? brutoNecesario / horasFacturablesAnio : Infinity;
+
+    return {
+      semanasTrabajadas: semanasTrabajadas,
+      horasFacturablesSemana: horasFacturablesSemana,
+      horasFacturablesAnio: horasFacturablesAnio,
+      costoAnual: costoAnual,
+      ingresoObjetivo: ingresoObjetivo,
+      netoNecesario: netoNecesario,
+      factorImpuestos: factorImpuestos,
+      brutoNecesario: brutoNecesario,
+      tarifaExacta: tarifaExacta,
+      tarifaRedondeada: isFinite(tarifaExacta) ? Math.round(tarifaExacta / 100) * 100 : Infinity,
+      // derivados: siempre con la tarifa EXACTA, para que los números cierren
+      porDia: tarifaExacta * HORAS_DIA,
+      porMes: tarifaExacta * horasFacturablesAnio / MESES_ANIO
+    };
+  }
+
+  // ---------- pantalla ----------
+  function pintar(){
+    var c = calcular(estado);
+    var valido = isFinite(c.tarifaExacta) && c.tarifaExacta > 0;
+
+    document.getElementById("out-rate").innerHTML =
+      '<span class="cur">$</span>' + (valido ? fmtMoneda.format(c.tarifaRedondeada) : "—");
+    document.getElementById("out-rate-exact").textContent = valido
+      ? "por hora facturable · exacto " + pesos2(c.tarifaExacta)
+      : "por hora facturable";
+
+    document.getElementById("out-day").textContent  = valido ? pesos(c.porDia) : "—";
+    document.getElementById("out-month").textContent = valido ? pesos(c.porMes) : "—";
+    document.getElementById("out-week").textContent = fmtNum1.format(c.horasFacturablesSemana) + " h";
+
+    var alerta = document.getElementById("alert");
+    var msg = "";
+    if (c.factorImpuestos <= 0) msg = "Con impuestos al 100% no queda nada neto: no hay tarifa posible.";
+    else if (c.horasFacturablesAnio <= 0) msg = "Sin horas facturables al año no se puede repartir el costo.";
+    else if (c.semanasTrabajadas <= 0) msg = "Si no trabajás ninguna semana del año, no hay horas para facturar.";
+    alerta.textContent = msg;
+    alerta.classList.toggle("on", msg !== "");
+
+    pintarPasos(c);
+  }
+
+  function paso(titulo, formula, resultado){
+    return '<li><div class="step-t">' + titulo + '</div>' +
+           '<div class="step-f">' + formula + '</div>' +
+           '<div class="step-r">= <span>' + resultado + '</span></div></li>';
+  }
+
+  function pintarPasos(c){
+    var s = estado;
+    var n = function(v){ return "<b>" + fmtNum2.format(v) + "</b>"; };
+    var m = function(v){ return "<b>" + pesos(v) + "</b>"; };
+    var pct = function(v){ return "<b>" + fmtNum1.format(v) + "%</b>"; };
+    var tarifa = isFinite(c.tarifaExacta) ? pesos2(c.tarifaExacta) : "sin solución";
+
+    document.getElementById("steps").innerHTML = [
+      paso("Semanas trabajadas al año",
+        "52 semanas − " + n(s.semanasVacaciones) + " de vacaciones y feriados",
+        fmtNum1.format(c.semanasTrabajadas) + " semanas"),
+
+      paso("Horas facturables al año",
+        n(s.horasPorSemana) + " h/semana × " + pct(s.porcentajeFacturable) + " facturable × " +
+        fmtNum1.format(c.semanasTrabajadas) + " semanas",
+        fmtNum1.format(c.horasFacturablesAnio) + " horas " +
+        "(" + fmtNum1.format(c.horasFacturablesSemana) + " h por semana)"),
+
+      paso("Costo anual total",
+        "(" + m(s.gastosFijosMes) + " del negocio + " + m(s.gastosPersonalesMes) + " personales) × 12 meses",
+        pesos(c.costoAnual)),
+
+      paso("Ingreso objetivo",
+        m(s.gananciaMes) + " de ganancia por mes × 12 meses",
+        pesos(c.ingresoObjetivo)),
+
+      paso("Ingreso bruto necesario después de impuestos",
+        "(" + pesos(c.costoAnual) + " + " + pesos(c.ingresoObjetivo) + ") ÷ (1 − " + pct(s.porcentajeImpuestos) + ") " +
+        "&nbsp;→&nbsp; " + pesos(c.netoNecesario) + " ÷ " + fmtNum2.format(c.factorImpuestos),
+        isFinite(c.brutoNecesario) ? pesos(c.brutoNecesario) : "sin solución"),
+
+      paso("Tarifa por hora",
+        (isFinite(c.brutoNecesario) ? pesos(c.brutoNecesario) : "—") + " ÷ " +
+        fmtNum1.format(c.horasFacturablesAnio) + " horas facturables",
+        tarifa + (isFinite(c.tarifaExacta) ? " &nbsp;·&nbsp; redondeada: " + pesos(c.tarifaRedondeada) : ""))
+    ].join("");
+  }
+
+  function sincronizar(){
+    CAMPOS.forEach(function(c){
+      var base = c[0], v = estado[c[1]];
+      el[base].range.value = v;
+      el[base].num.value = v;
+    });
+  }
+
+  function aviso(txt){
+    var s = document.getElementById("status");
+    s.textContent = txt;
+    if (txt) setTimeout(function(){ if (s.textContent === txt) s.textContent = ""; }, 5000);
+  }
+
+  // ---------- eventos ----------
+  CAMPOS.forEach(function(c){
+    var base = c[0], key = c[1];
+    el[base].range.addEventListener("input", function(){
+      estado[key] = limitar(base, this.value);
+      el[base].num.value = estado[key];
+      pintar();
+    });
+    el[base].num.addEventListener("input", function(){
+      var v = parseFloat(this.value);
+      if (!isFinite(v)) return;            // dejamos escribir sin pelear con el cursor
+      estado[key] = limitar(base, v);
+      el[base].range.value = estado[key];
+      pintar();
+    });
+    el[base].num.addEventListener("change", function(){
+      estado[key] = limitar(base, this.value);
+      this.value = estado[key];
+      el[base].range.value = estado[key];
+      pintar();
+    });
+  });
+
+  // ---------- exportar / importar ----------
+  document.getElementById("btn-export").addEventListener("click", function(){
+    var c = calcular(estado);
+    var datos = {
+      version: 1,
+      tipo: "calculadora-tarifa-por-hora",
+      generado: new Date().toISOString(),
+      moneda: "ARS",
+      entradas: {
+        gastosFijosMes: estado.gastosFijosMes,
+        gastosPersonalesMes: estado.gastosPersonalesMes,
+        gananciaMes: estado.gananciaMes,
+        horasPorSemana: estado.horasPorSemana,
+        porcentajeFacturable: estado.porcentajeFacturable,
+        semanasVacaciones: estado.semanasVacaciones,
+        porcentajeImpuestos: estado.porcentajeImpuestos
+      },
+      resultados: {
+        tarifaPorHoraExacta: isFinite(c.tarifaExacta) ? Number(c.tarifaExacta.toFixed(4)) : null,
+        tarifaPorHoraRedondeada: isFinite(c.tarifaRedondeada) ? c.tarifaRedondeada : null,
+        porDiaDe8Horas: isFinite(c.porDia) ? Number(c.porDia.toFixed(2)) : null,
+        facturadoPorMes: isFinite(c.porMes) ? Number(c.porMes.toFixed(2)) : null,
+        horasFacturablesPorSemana: Number(c.horasFacturablesSemana.toFixed(2))
+      },
+      pasos: {
+        semanasTrabajadasAlAnio: c.semanasTrabajadas,
+        horasFacturablesAlAnio: Number(c.horasFacturablesAnio.toFixed(2)),
+        costoAnualTotal: c.costoAnual,
+        ingresoObjetivo: c.ingresoObjetivo,
+        ingresoBrutoNecesario: isFinite(c.brutoNecesario) ? Number(c.brutoNecesario.toFixed(2)) : null
+      }
+    };
+    var blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "tarifa-por-hora-" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    aviso("Listo: archivo JSON descargado.");
+  });
+
+  document.getElementById("btn-import").addEventListener("click", function(){
+    document.getElementById("file-import").click();
+  });
+
+  document.getElementById("file-import").addEventListener("change", function(ev){
+    var archivo = ev.target.files && ev.target.files[0];
+    if (!archivo) return;
+    var lector = new FileReader();
+    lector.onload = function(){
+      try {
+        var datos = JSON.parse(String(lector.result));
+        var entradas = datos && (datos.entradas || datos);
+        var usados = 0;
+        CAMPOS.forEach(function(c){
+          var key = c[1];
+          if (entradas && entradas[key] !== undefined && entradas[key] !== null && isFinite(parseFloat(entradas[key]))) {
+            estado[key] = limitar(c[0], entradas[key]);
+            usados++;
+          }
+        });
+        if (!usados) { aviso("No encontré ningún dato reconocible en ese archivo."); return; }
+        sincronizar(); pintar();
+        aviso("Importado: " + usados + " de 7 datos cargados del archivo.");
+      } catch (e) {
+        aviso("Ese archivo no es un JSON válido.");
+      }
+    };
+    lector.onerror = function(){ aviso("No se pudo leer el archivo."); };
+    lector.readAsText(archivo);
+    ev.target.value = "";  // permite reimportar el mismo archivo
+  });
+
+  document.getElementById("btn-reset").addEventListener("click", function(){
+    estado = Object.assign({}, EJEMPLO);
+    sincronizar(); pintar();
+    aviso("Valores de ejemplo restaurados.");
+  });
+
+  sincronizar();
+  pintar();
+})();
+</script>
+</body>
+</html>
